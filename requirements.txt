@@ -1,3 +1,4 @@
+logging_tree
 openpyxl
 easygui==0.98.1
 numpy==1.14.5

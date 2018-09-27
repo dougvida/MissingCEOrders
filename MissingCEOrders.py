@@ -35,10 +35,6 @@ python MissingCEOrders.py -f <folder>
 
 from sys import exit, argv
 
-import os
-import json
-import logging.config
-
 import openpyxl
 import xlrd
 from easygui import msgbox, buttonbox
@@ -49,41 +45,8 @@ from DB.DB_SyncMissingOrders import DBAccess, DBExceptions
 from ShowResults import show_results
 from Utilities.FileGUIUtility import getfile
 from Utilities.General import is_number, fix_ce_order_number
-
-
-#def setup_logging(
-#        default_path='logging.json',
-#        default_level=logging.INFO,
-#        env_key='LOG_CFG'
-#):
-#    """Setup logging configuration
-#
-#    """
-#    path = default_path
-#    value = os.getenv(env_key, None)
-#    if value:
-#        path = value
-#    if os.path.exists(path):
-#        with open(path, 'rt') as f:
-#            config = json.load(f)
-#        logging.config.dictConfig(config)
-#    else:
-#        logging.basicConfig(level=default_level)
-
-# def create_timed_rotationg_log(log_pathname):
-#
-#    # logging.basicConfig(level=logging.DEBUG, format="%(asctime)s:%(message)s")
-#    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-#                        datefmt='%m-%d %H:%M', filename='%(log_pathname)', filemode='w')
-#
-#    logger = logging.getLogger('__name__')
-#    logger.setLevel(logging.INFO)
-#
-#    handler = TimedRotatingFileHandler(log_path, when="midnight", interval=1, backupCounts=5)
-#    logger.addHandler(handler)
-# logging.basicConfig(filename="test.log", level=logging.DEBUG, format="%(asctime)s:%(message)s"
-# logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s', datefmt='%m-%d %H:%M',
-#                    filename='%(log_pathname)', filemode='w')
+from logging.handlers import TimedRotatingFileHandler
+from logging_tree import printout
 
 
 def process_files(sl_file, ce_file):
@@ -107,7 +70,7 @@ def process_files(sl_file, ce_file):
     if sl_file is None:
         logger.warning("Using database to access order data")
         try:
-            mydbcls = DBAccess(config.username, config.password, -25)
+            mydbcls = DBAccess(app_cfg.db_username, app_cfg.db_password, -25)
             starlims_orders = mydbcls.fetch_non_errors()
             starlims_errors = mydbcls.fetch_errors()
             result = (starlims_orders, starlims_errors)
@@ -384,18 +347,44 @@ def msg(errstr1=''):
     stmp1 = "Usage:\n" \
             "python MissingCEOrders.py (this will prompt the user for files\n" \
             "python MissingCEOrders.py -s <HL7OrdersFile> -c <CEOrdersFile> -a <accessionNumber>\n" \
-            "                          no prompt will be given\n" \
+            "no prompt will be given\n" \
             "python MissingCEOrders.py -a <accession> argument is used to search for a specific accession number\n" \
-            "                          Prompt for CareEvolve file\n" \
+            "Prompt for CareEvolve file\n" \
             "python MissingCEOrders.py -s <hl7file> argument is the Starlims HL7 Orders files.  Export from HL7 Orders tab\n" \
-            "                          Use this file as the master.  If blank will use the synced DB\n" \
+            "Use this file as the master.  If blank will use the synced DB\n" \
             "python MissingCEOrders.py -c <cdfile> argument is the CareEvolve file created by exporting the \n" \
-            "                             Audit reports=>Orders Created By report\n"
+            "Audit reports=>Orders Created By report\n"
 
     if errstr1:
         stmp1 += f"\nError {errstr1}"
 
     return stmp1
+
+
+LOGGING_DATE_FORMAT = '%Y%m%d_%H:%M:%S'
+
+
+def create_timed_rotating_log(path, log_name):
+    """
+    :param path:
+    :param log_name:
+    :return:
+    """
+
+    logging.basicConfig(format='%(asctime)s,%(name)s,%(levelname)s,%(message)s',
+                        datefmt=LOGGING_DATE_FORMAT, level=logging.DEBUG)
+
+    log = logging.getLogger(log_name)
+    log.setLevel(logging.INFO)
+
+    # use for production 'midnight'
+    handler = TimedRotatingFileHandler(path, when="d", interval=1, backupCount=5)
+    handler.suffix = LOGGING_DATE_FORMAT  # or anything else that strftime will allow
+    log.addHandler(handler)
+
+    # for i in range(6):
+    #    logger.info("This is a test!")
+    #    time.sleep(75)
 
 
 if __name__ == "__main__":
@@ -406,12 +395,14 @@ if __name__ == "__main__":
     will be used.  If the user clicks on the Cancel button than the database 
     method will be used."""
 
-    app_cfg = AppConfiguration(True)
-    logger = logging.getLogger(__name__)
+    # load the logging configuration
+    create_timed_rotating_log(os.path.join(config.DEFAULT_LOG_PATH, config.LOG_FILENAME), config.APP_NAME)
+    logger = logging.getLogger(config.APP_NAME)
     logger.setLevel(logging.INFO)
 
-    # load the logging configuration
-    logging.config.fileConfig('logging.ini')
+    logger.info("Starting Script")
+    app_cfg = AppConfiguration(True)
+    logger.info("Application Configured for test")
 
     starlims_filename = app_cfg.hl7_orders_base_filename
     ce_filename = app_cfg.ce_orders_base_filename
@@ -547,6 +538,8 @@ if __name__ == "__main__":
             except DBExceptions as dbe:
                 logger.exception(f"DB Exception : {str(dbe)}", exc_info=True)
                 exit(-1)
+
+        printout()  # print logging tree
 
         # Prompt the user to search again?
         if time_to_quit("Want to search again?", app_cfg.codebox_title):
