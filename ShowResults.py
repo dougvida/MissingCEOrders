@@ -45,8 +45,6 @@ def show_results(app_cfg: Configuration.AppConfiguration, orders, errors, total_
             er[4] = str_dt[0:10]
             stmp2 = str(er).replace("(", "").replace(")", "").replace("[", "").replace("]", "").replace("'", "")
             errors_str += stmp2.replace(", ", ",") + "\n"
-            # errors_str += str(er).replace("(", "").replace(")", "").replace("[", "").replace("]", "").replace("'",
-            # "").replace(", ", ",") + "\n"
             idx_cnt += 1
             logger.warning('\n' + errors_str)
         if errors_file(app_cfg, errors_str):
