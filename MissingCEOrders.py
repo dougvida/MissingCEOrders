@@ -143,7 +143,7 @@ def process_hl7_orders(filepathname):
         orders.append([hl7_order_id, ce_order, accession, order_status])
 
     # return both orders and errors lists
-    return orders, errors
+    return orders.sort(), errors.sort()
 
 
 def process_xlsx_file(filepathname, orders, errors):
