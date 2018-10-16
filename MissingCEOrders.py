@@ -34,19 +34,24 @@ python MissingCEOrders.py -f <folder>
 """
 
 from sys import exit, argv
+from Configuration import AppConfiguration
+from Configuration import Config
+from Configuration import PW
 
+import sys, os
 import openpyxl
+import logging
 import xlrd
 from easygui import msgbox, buttonbox
 
 from Arguments import Arguments
-from Configuration.AppConfiguration import *
 from DB.DB_SyncMissingOrders import DBAccess, DBExceptions
 from ShowResults import show_results
 from Utilities.FileGUIUtility import getfile
 from Utilities.General import is_number, fix_ce_order_number
 from logging.handlers import TimedRotatingFileHandler
 from logging_tree import printout
+
 
 
 def process_files(sl_file, ce_file):
@@ -143,7 +148,7 @@ def process_hl7_orders(filepathname):
         orders.append([hl7_order_id, ce_order, accession, order_status])
 
     # return both orders and errors lists
-    return orders.sort(), errors.sort()
+    return orders, errors
 
 
 def process_xlsx_file(filepathname, orders, errors):
@@ -382,10 +387,6 @@ def create_timed_rotating_log(path, log_name):
     handler.suffix = LOGGING_DATE_FORMAT  # or anything else that strftime will allow
     log.addHandler(handler)
 
-    # for i in range(6):
-    #    logger.info("This is a test!")
-    #    time.sleep(75)
-
 
 if __name__ == "__main__":
     """ MissingCEOrders - This script has the ability to search from the 
@@ -396,12 +397,12 @@ if __name__ == "__main__":
     method will be used."""
 
     # load the logging configuration
-    create_timed_rotating_log(os.path.join(config.DEFAULT_LOG_PATH, config.LOG_FILENAME), config.APP_NAME)
-    logger = logging.getLogger(config.APP_NAME)
+    create_timed_rotating_log(os.path.join(Config.DEFAULT_LOG_PATH, Config.LOG_FILENAME), Config.APP_NAME)
+    logger = logging.getLogger(Config.APP_NAME)
     logger.setLevel(logging.INFO)
 
     logger.info("Starting Script")
-    app_cfg = AppConfiguration(True)
+    app_cfg = AppConfiguration.AppConfiguration(True)
     logger.info("Application Configured for test")
 
     starlims_filename = app_cfg.hl7_orders_base_filename
@@ -488,18 +489,18 @@ if __name__ == "__main__":
 
             #if errmsg.lower() == 'file not found':
             #    if time_to_quit("File not found.  Do you want to Quit?", codebox_title):
-            #        exit(-1)
+            #        os._exit(-1)
             #    else:
             #        continue
             #if errmsg.lower() == 'Invalid file name':
             #    if time_to_quit("File selected is not an HL7 file. Do you want to Quit?", codebox_title):
-            #        exit(-2)
+            #        os._exit(-2)
             #    else:
             #        continue
 
             #if errmsg.lower() == 'cancel':
             #    if time_to_quit("No file selected. Do you want to Quit?", codebox_title):
-            #        exit(-3)
+            #        os._exit(-3)
             #    else:
             #        continue
         """
@@ -543,4 +544,4 @@ if __name__ == "__main__":
 
         # Prompt the user to search again?
         if time_to_quit("Want to search again?", app_cfg.codebox_title):
-            exit(0)
+             exit(0)

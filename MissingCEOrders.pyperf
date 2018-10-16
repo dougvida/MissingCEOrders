@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<ProfilingTarget xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <ProjectTarget>
+    <TargetProject>e6d981ac-3caa-4216-8c21-384138e85fdf</TargetProject>
+    <FriendlyName>MissingCEOrders</FriendlyName>
+  </ProjectTarget>
+  <Reports>
+    <Report>
+      <Filename>C:\Users\doug.vidakovich\AppData\Local\Temp\MissingCEOrders_20181016.vsp</Filename>
+    </Report>
+  </Reports>
+</ProfilingTarget>

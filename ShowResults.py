@@ -1,10 +1,12 @@
 import logging
+from Configuration import AppConfiguration
+from Configuration import Config
+
 from easygui import *
 from ManageOutputFiles import missing_file, errors_file
-import Configuration.AppConfiguration
 
 
-def show_results(app_cfg: Configuration.AppConfiguration, orders, errors, total_count):
+def show_results(app_cfg: AppConfiguration, orders, errors, total_count):
     """
     write the orders and errors list to the dialog box
     :param app_cfg:
