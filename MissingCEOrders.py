@@ -270,7 +270,7 @@ def process_xls_file(filenamepath, orders, errors):
             # order_date2 = datetime.datetime.strptime(str_date, "%Y/%m/%d")
 
             # check if created by a demo user
-            if created_by.__contains__('JANEDOE') or created_by.__contains__('JOHNDOE'):
+            if created_by.__contains__('JANEDOE') or created_by.__contains__('JOHNDOE') or created_by.__contains__('TRAINING'):
                 continue
 
             status_add = ''
