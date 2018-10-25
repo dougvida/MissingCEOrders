@@ -13,7 +13,20 @@ def write_file(file_path_name, data):
     """
     fp_name = os.path.join("", file_path_name)  # get the path correct based on OS
     with open(fp_name, "w+") as out_file:
-        out_file.write(data)
+        out_file.write(data + '\n')
+
+
+def write_file_array(file_path_name, data_ar: [str]):
+    """
+    Write the file and populate with the data
+    :param file_path_name:
+    :param data_ar: [str]
+    :return:
+    """
+    fp_name = os.path.join("", file_path_name)  # get the path correct based on OS
+    with open(fp_name, "w+") as out_file:
+        for data in data_ar:
+            out_file.write(data + '\n')
 
 
 def ensure_dir(file_path):

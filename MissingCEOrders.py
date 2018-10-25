@@ -33,25 +33,23 @@ python MissingCEOrders.py -s HL7Orders082218.xlsx -c CEOrders082318.xls -a 18041
 python MissingCEOrders.py -f <folder>
 """
 
-from sys import exit, argv
-from Configuration import AppConfiguration
-from Configuration import Config
-from Configuration import PW
-
-import sys, os
-import openpyxl
 import logging
+import os
+from logging.handlers import TimedRotatingFileHandler
+from sys import exit, argv
+
+import openpyxl
 import xlrd
 from easygui import msgbox, buttonbox
+from logging_tree import printout
 
 from Arguments import Arguments
+from Configuration import AppConfiguration
+from Configuration import Config
 from DB.DB_SyncMissingOrders import DBAccess, DBExceptions
 from ShowResults import show_results
 from Utilities.FileGUIUtility import getfile
 from Utilities.General import is_number, fix_ce_order_number
-from logging.handlers import TimedRotatingFileHandler
-from logging_tree import printout
-
 
 
 def process_files(sl_file, ce_file):
@@ -75,7 +73,7 @@ def process_files(sl_file, ce_file):
     if sl_file is None:
         logger.warning("Using database to access order data")
         try:
-            mydbcls = DBAccess(app_cfg.db_username, app_cfg.db_password, -25)
+            mydbcls = DBAccess(app_cfg.db_username, app_cfg.db_password, -10)
             starlims_orders = mydbcls.fetch_non_errors()
             starlims_errors = mydbcls.fetch_errors()
             result = (starlims_orders, starlims_errors)
