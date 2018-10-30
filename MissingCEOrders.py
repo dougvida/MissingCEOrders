@@ -13,11 +13,6 @@ import HL7Search
 pydoc.help(HL7Search)
 ***************************************
 
-Version 1.0.0 - first cut
-Version 1.0.2 - Added DB search
-Version 1.0.3 - Added AppConfiguration class
-                Added -o and -p parameters
-
 Easygui  http://easygui.sourceforge.net/tutorial.html#codebox
 Make into an EXE
 pip install pyinstaller
@@ -55,8 +50,14 @@ from Utilities.FileGUIUtility import getfile
 from Utilities.General import is_number, fix_ce_order_number
 from Utilities.RotateLogs import rotate_file
 
-LOGGING_MSG_FORMAT = '%(asctime)s,%(name)-12s,%(levelname)-8s,%(message)s'
-LOGGING_DATE_FORMAT = '%Y%m%d %H:%M:%S'
+APP_VERSION: str = "v1.0.5"
+app_chg_history: list
+app_chg_history.append("1.0.0 - Initial creation")
+app_chg_history.append("1.0.1 - Added GUI")
+app_chg_history.append("1.0.2 - Added Database search")
+app_chg_history.append("1.0.3 - Added Logging")
+app_chg_history.append("1.0.4 - Fixed the data out and logging")
+app_chg_history.append("1.0.5 - Changed History to a list.  Will display in usage")
 
 
 def process_files(sl_file, ce_file):
@@ -390,7 +391,10 @@ def msg(errstr1=''):
             "python MissingCEOrders.py -s <hl7file> argument is the Starlims HL7 Orders files.  Export from HL7 Orders tab\n" \
             "Use this file as the master.  If blank will use the synced DB\n" \
             "python MissingCEOrders.py -c <cdfile> argument is the CareEvolve file created by exporting the \n" \
-            "Audit reports=>Orders Created By report\n"
+            "Audit reports=>Orders Created By report\n\n"
+
+    for tmp in app_chg_history:
+        stmp1 += tmp+'\n'
 
     if errstr1:
         stmp1 += f"\nError {errstr1}"
