@@ -38,7 +38,6 @@ def missing_file(app_cfg, datastr: [str]):
     write the missing orders to the missingCE file
     :param app_cfg: app configuration object
     :param datastr:
-    :param logger:
     :return: True = failure; False = successful
     """
 

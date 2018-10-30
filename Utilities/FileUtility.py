@@ -2,6 +2,7 @@
     easygui : http://easygui.sourceforge.net/api.html
 """
 import os
+from os.path import exists
 
 
 def write_file(file_path_name, data):
@@ -43,6 +44,10 @@ def ensure_dir(file_path):
         os.makedirs(directory)
 
 
+def file_exists(file_path):
+    return exists(file_path)
+
+
 def fix_path(folder):
     """This script will append the OS folder separator"""
     if not folder.endswith(os.sep):
@@ -67,8 +72,8 @@ def folder_exists(srcfolder, mode=False):
                     return True
                 else:
                     return False
-        except Exception as exp:
-            print(f"Exception {exp}")
+        except FileNotFoundError as fnf:
+            print(f"Exception {fnf}")
 
     else:
         return False

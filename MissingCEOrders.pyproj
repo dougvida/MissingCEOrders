@@ -22,6 +22,7 @@
     <Content Include="Configuration\logging.ini" />
     <Content Include="Configuration\pw.zip" />
     <Content Include="docs\MissingCEOrders.docx" />
+    <Content Include="logging.ini" />
     <Content Include="requirements.txt" />
   </ItemGroup>
   <ItemGroup>

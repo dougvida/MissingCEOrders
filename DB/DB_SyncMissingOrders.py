@@ -3,12 +3,13 @@ import pyodbc
 
 from DB.DBException import DBExceptions
 from Utilities.DateRange import DateRange
+from Configuration import AppConfiguration, Config, PW
 import logging
 
 
 class DBAccess:
 
-    def __init__(self, usr='', pw='', start_dt_offset=-25):
+    def __init__(self, start_dt_offset=-25):
 
         self.logging = None
 
@@ -46,14 +47,14 @@ class DBAccess:
         # setup the DB parameters
         self._server = 'pdx-dw-prod-srvr.database.windows.net'
         self._database = 'pdx-dw-prod'
-        self._username = usr
-        self._password = pw
+        self._username = PW.username
+        self._password = PW.password
         self._driver = '{ODBC Driver 13 for SQL Server}'
 
         self.cont_str = f"DRIVER={self._driver}; PORT=1433; DATABASE={self._database}; " \
                         f"SERVER={self._server}; UID={self._username}; PWD={self._password};"
 
-        self._logging = logging.getLogger('DBAccess')
+        self._logging = logging.getLogger(Config.APP_NAME)
 
     def db_user_pwd(self, usr='', pwd=''):
         update = False
@@ -71,59 +72,75 @@ class DBAccess:
     def fetch_all(self):
         results = []
 
+        foo = "DBAccess::fetch_all"
+
         # build the query string
         query = self._query_str + self._where_all + self._prelog_date + self._order_by
-        self._logging.info("fetch_all : {query}")
+        stmp = f"{foo} - Query: {query}"
+        self._logging.debug(stmp)
         results = self.fetch_data(query)
 
         if results is not None:
-            print(f"fetch_all : Number of rows returned: {len(results)}")
+            stmp = f"{foo} - Number of rows returned: {len(results)}"
         else:
-            print("fetch_all : No results found")
+            stmp = f"{foo} - No results found"
 
+        self._logging.info(stmp)
         return results
 
     def fetch_non_errors(self):
         results = []
 
+        foo = "DBAccess::fetch_non_errors"
+
         # build the query string
         query = self._query_str + self._where_non_errors + self._prelog_date + self._order_by
-        self._logging.info("fetch_non_errors : {query}")
+        stmp = f"{foo} - Query: {query}"
+        self._logging.debug(stmp)
         results = self.fetch_data(query)
 
         if results is not None:
-            stmp = f"fetch_non_errors : Number of rows returned: {len(results)}"
+            stmp = f"{foo} - Number of rows returned: {len(results)}"
         else:
-            stmp = "fetch_non_errors : No results found"
+            stmp = f"{foo} - No results found"
 
-        self._logging.warning(stmp)
+        self._logging.info(stmp)
         return results
 
     def fetch_errors(self):
         results = []
 
+        foo = "DBAccess::fetch_errors"
+        
         try:
             # build the query string
             query = self._query_str + self._where_err + self._prelog_date + self._order_by
-            self._logging.info(f"fetch_errors : {query}")
+            stmp = f"{foo} - Query: {query}"
+            self._logging.debug(stmp)
             results = self.fetch_data(query)
             return results
 
         except pyodbc.ProgrammingError as sqlerr:
             # show the error
-            self._logging.info(f"SQL error: {print(sqlerr)}")
+            stmp = f"***** SQL error: {foo} - {print(sqlerr)}"
+            self._logging.error(stmp)
             results = None
 
         finally:
-            self._logging.info(f"Number of rows returned: {len(results)}")
+            stmp = f"{foo} - Number of rows returned: {len(results)}"
+            self._logging.info(stmp)
 
     def fetch_data(self, query):
         results = []
+
+        foo = "DBAccess::fetch_data"
 
         try:
             # execute the query
             with pyodbc.connect(self.cont_str) as cnxn:
                 cursor = cnxn.cursor().execute(query)
+                stmp = f"{foo} - Database connection successful - Performing data fetch"
+                self._logging.info(stmp)
 
                 # get all the rows found
                 for row in cursor.fetchall():
@@ -132,16 +149,16 @@ class DBAccess:
             return results
 
         except Exception as exp:
-            stmp = f"EXCEPTION - fetch_data: print{exp}"
+            stmp = f"***** EXCEPTION - {foo} - print{exp}"
             self._logging.exception(stmp)
             raise DBExceptions().my_exception(stmp)
 
         except pyodbc.DatabaseError as dbe:
-            stmp = f"Exception - fetch_data : {str(dbe)}"
+            stmp = f"***** EXCEPTION - {foo} - {str(dbe)}"
             self._logging.exception(stmp)
             raise DBExceptions().my_exception(stmp)
 
         except pyodbc.ProgrammingError as sqlerr:
-            stmp = f"Exception - fetch_data : {str(sqlerr)}"
+            stmp = f"***** EXCEPTION - {foo} - {str(sqlerr)}"
             self._logging.exception(stmp)
             raise DBExceptions().my_exception(stmp)

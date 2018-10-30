@@ -62,7 +62,7 @@ def hl7search(title):
         errmsg = ''
         for i in range(len(field_names) - 1):  # don't make data required
             if field_values[i].strip() == "":
-                errmsg = errmsg + f'Entry {fieldNames[i]} is required\n\n'
+                errmsg = errmsg + f'Entry {field_names[i]} is required\n\n'
         if errmsg == "":
             break
 

@@ -29,6 +29,7 @@ class AppConfiguration:
         self._ceorders_base_filename: str = Config.CEORDERS_FILE
         self._dbusername: str = PW.username
         self._dbpassword: str = PW.password
+        self._search_accession: str = ''
         self._datapath: str = ''
         if default_path is True:
             self.data_path = os.path.join("", Config.DEFAULT_DATA_PATH)
@@ -86,6 +87,14 @@ class AppConfiguration:
             # does not exist.  Log error and set to default
             logging.error(f"path does not exist: {value}.  Set to use current working directory", exc_info=True)
             self._datapath = os.path.join(os.getcwd(), Config.DATA_FOLDER)
+
+    @property
+    def search_accession(self):
+        return self._search_accession
+
+    @search_accession.setter
+    def search_accession(self, value):
+        self._search_accession = value
 
     @property
     def log_name(self):

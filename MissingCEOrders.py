@@ -31,11 +31,14 @@ pyinstaller --onefile <your_script_name>.py
 
 python MissingCEOrders.py -s HL7Orders082218.xlsx -c CEOrders082318.xls -a 180415043
 python MissingCEOrders.py -f <folder>
+python MissingCEOrders.py -a CE00137623
 """
 
 import logging
+import logging.config
+import logging.handlers
 import os
-from logging.handlers import TimedRotatingFileHandler
+# from logging.handlers import TimedRotatingFileHandler
 from sys import exit, argv
 
 import openpyxl
@@ -50,6 +53,10 @@ from DB.DB_SyncMissingOrders import DBAccess, DBExceptions
 from ShowResults import show_results
 from Utilities.FileGUIUtility import getfile
 from Utilities.General import is_number, fix_ce_order_number
+from Utilities.RotateLogs import rotate_file
+
+LOGGING_MSG_FORMAT = '%(asctime)s,%(name)-12s,%(levelname)-8s,%(message)s'
+LOGGING_DATE_FORMAT = '%Y%m%d %H:%M:%S'
 
 
 def process_files(sl_file, ce_file):
@@ -71,15 +78,17 @@ def process_files(sl_file, ce_file):
     # If sl_file is None use the database to fetch orders
     # Remember the Orders table for STARLiMS is 1 to 2 hours behind
     if sl_file is None:
-        logger.warning("Using database to access order data")
         try:
-            mydbcls = DBAccess(app_cfg.db_username, app_cfg.db_password, -10)
+            mydbcls = DBAccess(-10)  # only go back 10 days
+            logger.info("Fetching Orders with no Errors from DB")
             starlims_orders = mydbcls.fetch_non_errors()
+            logger.info("Fetching Orders with Errors from DB")
             starlims_errors = mydbcls.fetch_errors()
+            
             result = (starlims_orders, starlims_errors)
 
         except ValueError as err:
-            stmp1 = f"Exception - process_files : {str(err)})"
+            stmp1 = f"***** Exception - process_files : {str(err)})"
             logger.exception(stmp1)
             raise DBExceptions(stmp1)
     else:
@@ -88,7 +97,7 @@ def process_files(sl_file, ce_file):
 
     # check if file name ext is .xls or .xlsx
     if ce_file is None:
-        logger.error("Error CE orders file was not selected")
+        logger.error("***** Error CE orders file was not selected")
         return
 
     name, ext = os.path.splitext(ce_file)
@@ -99,7 +108,7 @@ def process_files(sl_file, ce_file):
         # old 2003 workbook
         process_xls_file(ce_file, result[0], result[1])
     else:
-        logger.error(f"Error with source file.  Not correct file type: {ce_file}")
+        logger.error(f"***** Error with source file.  Not correct file type: {ce_file}")
 
     return
 
@@ -170,12 +179,17 @@ def process_xlsx_file(filepathname, orders, errors):
         sheet = wb.active
 
         break_cnt = 0
+
+        accession_search = False
+        if app_cfg.search_accession:
+            accession_search = True
+
         for idx, row in enumerate(sheet.rows):
             # skip all rows that don't have a order number
             if not str(row[6].value).isnumeric():
                 continue
 
-            status_add = ''
+            status_add: str = ''
             total_entries += 1
             order_number = str(row[6].value).strip()
             order_date = str(row[8].value).strip()
@@ -189,38 +203,45 @@ def process_xlsx_file(filepathname, orders, errors):
             if created_by.__contains__('JANEDOE') or created_by.__contains__('JOHNDOE'):
                 continue
 
-            order_number = fix_ce_order_number(order_number)
-
-            if any(order_number in s for s in orders):
-                print('-', end='', flush=True)
-            else:
-                # not found
-                print(r'X', end='', flush=True)
-                # lets check if the order number is in the errors list
-                if any(order_number in s for s in errors):
-                    # yes found now lets get the HL7Order number and add to the output
-                    for er1 in errors:
-                        if er1[1] == order_number:
-                            # we found it so lets add the HL7 Order number for easy lookup in StarLims
-                            order_number = er1[0] + "," + order_number
-                            status_add = ", " + er1[5]
-                            break
+            if accession_search:
+                order_number = app_cfg.search_accession
+                if any(order_number in s for s in orders):
+                    print('-', end='', flush=True)
                 else:
-                    order_number = "N/A," + order_number
-                    status_add = " - Order not found in STARLims"
+                    missing_orders.append([order_number, order_date, str(status + status_add)])
+                    break  # we want to get out.  the accession was found or not
+            else:
+                order_number = fix_ce_order_number(order_number)
+                if any(order_number in s for s in orders):
+                    print('-', end='', flush=True)
+                else:
+                    # not found
+                    print(r'X', end='', flush=True)
+                    # lets check if the order number is in the errors list
+                    if any(order_number in s for s in errors):
+                        # yes found now lets get the HL7Order number and add to the output
+                        for er1 in errors:
+                            if er1[1] == order_number:
+                                # we found it so lets add the HL7 Order number for easy lookup in StarLims
+                                order_number = er1[0] + "," + order_number
+                                status_add = ", " + er1[5]
+                                break
+                    else:
+                        order_number = "N/A," + order_number
+                        status_add = " - Order not found in STARLims"
 
-                missing_orders.append([order_number, order_date, str(status + status_add)])
+                    missing_orders.append([order_number, order_date, str(status + status_add)])
 
-            break_cnt += 1
-            if break_cnt % 80 == 0:
-                print(r'', flush=True)
+                break_cnt += 1
+                if break_cnt % 80 == 0:
+                    print(r'', flush=True)
 
     except openpyxl.utils.exceptions.InvalidFileException as err:
-        logger.info(f'Exception: {err}')
+        logger.info(f'***** Exception: {err}')
         time_to_quit('Upgrade excel file to newer version', 'Open CE Order file')
 
     except IOError as ioe:
-        time_to_quit('IO Error', f'Open CE Order file: {str(ioe)}')
+        time_to_quit('***** IO Error', f'Open CE Order file: {str(ioe)}')
 
     print(' ', flush=True)
     missing_orders.sort()
@@ -251,6 +272,11 @@ def process_xls_file(filenamepath, orders, errors):
         # p = wb.sheet_by_name(name='Sheet1')
 
         break_cnt = 0
+
+        accession_search = False
+        if app_cfg.search_accession:
+            accession_search = True
+
         for row in p.get_rows():
             if row[6].value == '':
                 continue
@@ -279,41 +305,49 @@ def process_xls_file(filenamepath, orders, errors):
             if status != 'Complete':
                 continue
 
-            order_number = fix_ce_order_number(order_number)
-
-            # found = 'None'
-            # for cnt, row1 in enumerate(orders):
-            #    if cnt % 80 == 0:
-            #        print(r'', flush=True)
-            #    if x2 != row1[2]:
-            #        print('.', end='', flush=True)
-            #        continue
-            #    else:
-            #        print(r'X', end='', flush=True)
-            #        found = row1
-
-            # if found == 'None':
-            #    missing_orders.append([x2, order_date, status])
-
-            if any(order_number in s for s in orders):
-                print('-', end='', flush=True)
-            else:
-                # not found
-                print(r'X', end='', flush=True)
-                # lets check if the order number is in the errors list
-                if any(order_number in s for s in errors):
-                    # yes found now lets get the HL7Order number and add to the output
-                    for er1 in errors:
-                        if er1[1] == order_number:
-                            # we found it so lets add the HL7 Order number for easy lookup in StarLims
-                            order_number = er1[0] + "," + order_number
-                            status_add = ", " + er1[5]
-                            break
+            if accession_search:
+                order_number = app_cfg.search_accession
+                if any(order_number in s for s in orders):
+                    print('-', end='', flush=True)
                 else:
-                    order_number = "N/A," + order_number
-                    status_add = " - Order not found in STARLims"
+                    missing_orders.append([order_number, order_date, str(status + status_add)])
+                break  # we want to get out.  the accession was found or not
+            else:
+                order_number = fix_ce_order_number(order_number)
 
-                missing_orders.append([order_number, order_date, str(status + status_add)])
+                # found = 'None'
+                # for cnt, row1 in enumerate(orders):
+                #    if cnt % 80 == 0:
+                #        print(r'', flush=True)
+                #    if x2 != row1[2]:
+                #        print('.', end='', flush=True)
+                #        continue
+                #    else:
+                #        print(r'X', end='', flush=True)
+                #        found = row1
+
+                # if found == 'None':
+                #    missing_orders.append([x2, order_date, status])
+
+                if any(order_number in s for s in orders):
+                    print('-', end='', flush=True)
+                else:
+                    # not found
+                    print(r'X', end='', flush=True)
+                    # lets check if the order number is in the errors list
+                    if any(order_number in s for s in errors):
+                        # yes found now lets get the HL7Order number and add to the output
+                        for er1 in errors:
+                            if er1[1] == order_number:
+                                # we found it so lets add the HL7 Order number for easy lookup in StarLims
+                                order_number = er1[0] + "," + order_number
+                                status_add = ", " + er1[5]
+                                break
+                    else:
+                        order_number = "N/A," + order_number
+                        status_add = " - Order not found in STARLims"
+
+                    missing_orders.append([order_number, order_date, str(status + status_add)])
 
             break_cnt += 1
             if break_cnt % 80 == 0:
@@ -364,26 +398,39 @@ def msg(errstr1=''):
     return stmp1
 
 
-LOGGING_DATE_FORMAT = '%Y%m%d_%H:%M:%S'
-
-
-def create_timed_rotating_log(path, log_name):
+def create_timed_rotating_log(path, app_name):
     """
     :param path:
-    :param log_name:
+    :param app_name:
     :return:
     """
 
-    logging.basicConfig(format='%(asctime)s,%(name)s,%(levelname)s,%(message)s',
-                        datefmt=LOGGING_DATE_FORMAT, level=logging.DEBUG)
+    if len(path) < 3:
+        print(f"Path: {path} is invalid")
+        return False
 
-    log = logging.getLogger(log_name)
-    log.setLevel(logging.INFO)
+    if len(app_name) < 2:
+        print(f"App name: {app_name} is invalid")
+        return False
+
+    logging.config.fileConfig('Configuration/logging.ini', disable_existing_loggers=False,
+                              defaults={'logfilename': os.path.join("", path)})
+
+    # logging.basicConfig(format=LOGGING_MSG_FORMAT, datefmt=LOGGING_DATE_FORMAT, level=logging.DEBUG)
+
+    # load the logging configuration
+    # logging.config.fileConfig('logging.ini')
+
+    # log.setLevel(logging.DEBUG)
 
     # use for production 'midnight'
-    handler = TimedRotatingFileHandler(path, when="d", interval=1, backupCount=5)
-    handler.suffix = LOGGING_DATE_FORMAT  # or anything else that strftime will allow
-    log.addHandler(handler)
+#    handler = TimedRotatingFileHandler(path, when='M', interval=1, backupCount=5)
+#    handler.setFormatter(logging.Formatter(LOGGING_MSG_FORMAT))
+#    handler.setLevel(logging.DEBUG)
+#    handler.suffix = LOGGING_DATE_FORMAT  # or anything else that strftime will allow
+#    logging.getLogger(app_name).addHandler(handler)
+
+    return True     # success
 
 
 if __name__ == "__main__":
@@ -394,14 +441,19 @@ if __name__ == "__main__":
     will be used.  If the user clicks on the Cancel button than the database 
     method will be used."""
 
-    # load the logging configuration
-    create_timed_rotating_log(os.path.join(Config.DEFAULT_LOG_PATH, Config.LOG_FILENAME), Config.APP_NAME)
-    logger = logging.getLogger(Config.APP_NAME)
-    logger.setLevel(logging.INFO)
+    # rotate the log files
+    rotate_file(os.path.join(Config.DEFAULT_LOG_PATH, Config.LOG_FILENAME), 10)
 
-    logger.info("Starting Script")
+    # load the logging configuration
+    if not create_timed_rotating_log(os.path.join(Config.DEFAULT_LOG_PATH, Config.LOG_FILENAME), Config.APP_NAME):
+        print("Exit from application")
+        exit(-4)
+
+    logger = logging.getLogger(Config.APP_NAME)
+
+    logger.info("********** Starting Script **********")
     app_cfg = AppConfiguration.AppConfiguration(True)
-    logger.info("Application Configured for test")
+    logger.info(app_cfg.app_version)
 
     starlims_filename = app_cfg.hl7_orders_base_filename
     ce_filename = app_cfg.ce_orders_base_filename
@@ -451,8 +503,8 @@ if __name__ == "__main__":
         # check if we need to look for a specific specimen Id
         stmp = args_dict.get('accnum')
         if len(stmp) > 0:
-            find_this_accession = stmp
-            logger.info(f"Look for this accession number: {find_this_accession}")
+            app_cfg.search_accession = stmp
+            logger.info(f"Look for this accession number: {app_cfg.search_accession}")
 
     # get the data folder
     src_path = app_cfg.data_path
@@ -478,7 +530,7 @@ if __name__ == "__main__":
     errmsg: str = ''
     while True:
         # show File Dialog to select the master file
-        logger.info(app_cfg.app_version)
+        # logger.info(app_cfg.app_version)
         sl_file_name_path, errmsg = getfile(app_cfg.codebox_title, '', 'Please select the HL7 Order file to '
                                                                        'process', sl_filename_path)
         """        
@@ -509,37 +561,40 @@ if __name__ == "__main__":
         if ce_file_name_path is None:
             if errmsg.lower() == 'file not found':
                 if time_to_quit("File not found.  Do you want to Quit?", app_cfg.codebox_title):
-                    logger.error("Failed to locate (ceorders) file", exc_info=True)
+                    logger.error("***** Failed to locate (ceorders) file", exc_info=True)
                     exit(-1)
                 else:
                     continue
             if errmsg.lower() == 'Invalid file name':
                 if time_to_quit("File selected is invalid.  Do you want to Quit?", app_cfg.codebox_title):
-                    logger.error("Invalid file name", exc_info=True)
+                    logger.error("***** Invalid file name", exc_info=True)
                     exit(-2)
                 else:
                     continue
             if errmsg.lower() == 'cancel':
                 if time_to_quit("No file selected.  Do you want to Quit?", app_cfg.codebox_title):
-                    logger.error("No file selected", exc_info=True)
+                    logger.error("***** No file selected", exc_info=True)
                     exit(-3)
                 else:
                     continue
 
-        logger.warning(f"HL7Order file:{sl_file_name_path} - CEOrder file: {ce_file_name_path}")
+        logger.info(f"HL7Order file:{sl_file_name_path} - CEOrder file: {ce_file_name_path}")
 
         # go do the work
         if ce_file_name_path is None:
-            logger.error("CE order file was not selected.  This is required", exc_info=True)
+            logger.error("***** CE order file was not selected.  This is required", exc_info=True)
         else:
             try:
                 process_files(sl_file_name_path, ce_file_name_path)
             except DBExceptions as dbe:
-                logger.exception(f"DB Exception : {str(dbe)}", exc_info=True)
+                logger.exception(f"***** DB Exception : {str(dbe)}", exc_info=True)
                 exit(-1)
 
         printout()  # print logging tree
 
         # Prompt the user to search again?
         if time_to_quit("Want to search again?", app_cfg.codebox_title):
-             exit(0)
+            logger.info("*********** Ending Script ***********" + "\n\n")
+            exit(0)
+        else:
+            logger.info("******** Running Script Again *******")
