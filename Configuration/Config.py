@@ -1,6 +1,8 @@
 import os
 from Utilities.FileUtility import folder_exists
 
+APP_VERSION: str = "v1.0.5"
+
 HL7ORDERS_FILE: str = 'HL7Order*.xlsx'
 CEORDERS_FILE: str = 'CeOrders*.xls?'
 

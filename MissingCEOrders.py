@@ -33,7 +33,6 @@ import logging
 import logging.config
 import logging.handlers
 import os
-# from logging.handlers import TimedRotatingFileHandler
 from sys import exit, argv
 
 import openpyxl
@@ -50,14 +49,12 @@ from Utilities.FileGUIUtility import getfile
 from Utilities.General import is_number, fix_ce_order_number
 from Utilities.RotateLogs import rotate_file
 
-APP_VERSION: str = "v1.0.5"
-app_chg_history: list
-app_chg_history.append("1.0.0 - Initial creation")
-app_chg_history.append("1.0.1 - Added GUI")
-app_chg_history.append("1.0.2 - Added Database search")
-app_chg_history.append("1.0.3 - Added Logging")
-app_chg_history.append("1.0.4 - Fixed the data out and logging")
-app_chg_history.append("1.0.5 - Changed History to a list.  Will display in usage")
+APP_CHG_HISTORY = ["1.0.0 - Initial creation",
+                   "1.0.1 - Added GUI",
+                   "1.0.2 - Added Database search",
+                   "1.0.3 - Added Logging",
+                   "1.0.4 - Fixed the data out and logging",
+                   "1.0.5 - Changed History to be a list"]
 
 
 def process_files(sl_file, ce_file):
@@ -393,8 +390,9 @@ def msg(errstr1=''):
             "python MissingCEOrders.py -c <cdfile> argument is the CareEvolve file created by exporting the \n" \
             "Audit reports=>Orders Created By report\n\n"
 
-    for tmp in app_chg_history:
-        stmp1 += tmp+'\n'
+    for tmp in APP_CHG_HISTORY:
+        stmp1 += f"{tmp}" + "\n"
+    stmp1 += "\n"
 
     if errstr1:
         stmp1 += f"\nError {errstr1}"
@@ -469,6 +467,10 @@ if __name__ == "__main__":
     args_dict = {}
     if len(argv[1:]) > 0:
         args_dict = my_args.parse(argv[1:])
+        if args_dict == -1:
+            msgbox(title=app_cfg.codebox_title, msg=f"{msg()}")
+            exit(2)
+
         if args_dict.get('err') > 0:
             msg(args_dict.get('errmsg'))
             exit(2)     # error with command line arguments

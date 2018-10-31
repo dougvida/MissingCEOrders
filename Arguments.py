@@ -46,8 +46,7 @@ class Arguments:
             # msg()
             logging.exception(f"{str(exp)}")
 
-            err = -1    # exception display error message and abort app
-            return err
+            return -1    # exception display error message and abort app
 
         for opt, arg in opts:
             if opt in ('-h', '--help'):
