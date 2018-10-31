@@ -392,10 +392,11 @@ def msg(errstr1=''):
 
     for tmp in APP_CHG_HISTORY:
         stmp1 += f"{tmp}" + "\n"
-    stmp1 += "\n"
 
     if errstr1:
         stmp1 += f"\nError {errstr1}"
+
+    stmp1 += "\n"
 
     return stmp1
 
