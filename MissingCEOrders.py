@@ -66,6 +66,7 @@ def process_files(sl_file, ce_file):
     :param ce_file: orders file exported from CareEvolve
     :return: N/A
     """
+    foo = "MissingCEOrders::process_files"
 
     # starlims_orders: List[(str, str, str, str)] = []
     # starlims_errors: List[(str, str, str, str, str, str)] = []
@@ -78,15 +79,15 @@ def process_files(sl_file, ce_file):
     if sl_file is None:
         try:
             mydbcls = DBAccess(-10)  # only go back 10 days
-            logger.info("Fetching Orders with no Errors from DB")
+            logger.info(f"{foo} - Fetching Orders with no Errors from DB")
             starlims_orders = mydbcls.fetch_non_errors()
-            logger.info("Fetching Orders with Errors from DB")
+            logger.info(f"{foo} - Fetching Orders with Errors from DB")
             starlims_errors = mydbcls.fetch_errors()
             
             result = (starlims_orders, starlims_errors)
 
         except ValueError as err:
-            stmp1 = f"***** Exception - process_files : {str(err)})"
+            stmp1 = f"{foo} - ***** Exception - process_files : {str(err)})"
             logger.exception(stmp1)
             raise DBExceptions(stmp1)
     else:
@@ -95,7 +96,7 @@ def process_files(sl_file, ce_file):
 
     # check if file name ext is .xls or .xlsx
     if ce_file is None:
-        logger.error("***** Error CE orders file was not selected")
+        logger.error(f"{foo} - ***** Error CE orders file was not selected")
         return
 
     name, ext = os.path.splitext(ce_file)
@@ -106,7 +107,7 @@ def process_files(sl_file, ce_file):
         # old 2003 workbook
         process_xls_file(ce_file, result[0], result[1])
     else:
-        logger.error(f"***** Error with source file.  Not correct file type: {ce_file}")
+        logger.error(f"{foo} - ***** Error with source file.  Not correct file type: {ce_file}")
 
     return
 
@@ -167,10 +168,12 @@ def process_xlsx_file(filepathname, orders, errors):
     :return: N/A
     """
 
+    foo = "MissingCEOrders::process_xlsx_file"
+
     missing_orders: [[str, str, str]] = []
     total_entries = 0
 
-    logger.info(f"Process_excel_file:  {filepathname}")
+    logger.info(f"{foo} - Process_excel_file:  {filepathname}")
     # read the CE Orders Excel file
     try:
         wb = openpyxl.load_workbook(filename=filepathname, data_only=True)
@@ -235,11 +238,11 @@ def process_xlsx_file(filepathname, orders, errors):
                     print(r'', flush=True)
 
     except openpyxl.utils.exceptions.InvalidFileException as err:
-        logger.info(f'***** Exception: {err}')
+        logger.info(f"{foo} - ***** Exception: {err}")
         time_to_quit('Upgrade excel file to newer version', 'Open CE Order file')
 
     except IOError as ioe:
-        time_to_quit('***** IO Error', f'Open CE Order file: {str(ioe)}')
+        time_to_quit(f"{foo} - ***** IO Error', f'Open CE Order file: {str(ioe)}")
 
     print(' ', flush=True)
     missing_orders.sort()
@@ -257,6 +260,8 @@ def process_xls_file(filenamepath, orders, errors):
     :param errors: List
     :return: None
     """
+
+    foo = "MissingCEOrders::process_xls_file"
 
     missing_orders: [[str, str, str]] = []
     total_entries = 0
