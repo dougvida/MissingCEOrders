@@ -111,3 +111,11 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# C#
+.vs
+bin/
+obj/
+Debug/
+Release/
+packages/
