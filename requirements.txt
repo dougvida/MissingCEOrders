@@ -2,7 +2,7 @@ logging_tree
 openpyxl
 easygui==0.98.1
 numpy==1.14.5
-py==1.4.30
+py==1.10.0
 py2exe==0.9.2.2
 py2exe2msi==0.0.2
 pycparser==2.18
